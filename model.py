@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestRegressor
-
+from sklearn.impute import SimpleImputer
 
 def metric(preds, actuals):
 	preds = preds.reshape(-1)
@@ -12,10 +12,12 @@ def metric(preds, actuals):
 
 def data_cleaning(df):
 	df.loc[df.Open.isnull(), "Open"] = 1
+	mean_imputer = SimpleImputer(strategy="median")
+	df[["Customers"]] = mean_imputer.fit_transform(df[["Customers"]])
 	df["DayOfWeek"] = df.Date.dt.dayofweek + 1
 	categories = ["StateHoliday", "StoreType", "Assortment"]
 	df[categories] = df[categories].fillna(value="Missing")
-	numerical_features = ["Store", "Sales", "Customers", "Open", "Promo", "SchoolHoliday", "CompetitionDistance", "CompetitionOpenSinceMonth", "CompetitionOpenSinceYear", "Promo2", "Promo2SinceWeek", "Promo2SinceYear", "PromoInterval"]
+	numerical_features = ["Store", "Sales", "Open", "Promo", "SchoolHoliday", "CompetitionDistance", "CompetitionOpenSinceMonth", "CompetitionOpenSinceYear", "Promo2", "Promo2SinceWeek", "Promo2SinceYear", "PromoInterval"]
 	df[numerical_features] = df[numerical_features].fillna(value=-999)
 	df["StateHoliday"] = df["StateHoliday"].replace({"0.0": "0"})
 	integer_features = ["Promo", "Open", "Store", "Customers", "SchoolHoliday", "CompetitionDistance", "CompetitionOpenSinceMonth", "CompetitionOpenSinceYear", "Promo2", "Promo2SinceWeek", "Promo2SinceYear"]
@@ -28,6 +30,7 @@ def data_cleaning(df):
 def feature_engineering(df):
     df["Year"] = df.Date.dt.year
     df["Month"] = df.Date.dt.month
+    df["Day"] = df.Date.dt.day
     df["WeekOfYear"] = df.Date.dt.weekofyear
     return df
 
@@ -58,22 +61,22 @@ test = pd.merge(test, store, on="Store")
 print("Clean up data")
 train = data_cleaning(train)
 #print(train.isnull().sum())
-train = feature_engineering(train)
-#print(train.info())
 
-#train.dropna(inplace=True)
-#clean_up_data()
+print("Feature engineering")
+train = feature_engineering(train)
+test = feature_engineering(test)
+print(train.info())
 
 print("Train Random Forrest")
-features = ["Store", "Open"]
+features = ["Store", "Open", "DayOfWeek", "Year", "Month", "Day", "WeekOfYear", "Promo", "SchoolHoliday"]
 
 naive_sales_per_store = train.groupby("Store")["Sales"].mean()
 test["Prediction"] = test.Store.map(naive_sales_per_store)
 
 # Train a Random Forest model
-rf = RandomForestRegressor()
-#rf.fit(train[features], train.Sales)
-#test["Prediction"] = rf.predict(test[features])
+rf = RandomForestRegressor(n_jobs=4, verbose=True)
+rf.fit(train[features], train.Sales)
+test["Prediction"] = rf.predict(test[features])
 
 # Measure the error
 predictions = test["Prediction"].values
