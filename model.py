@@ -3,6 +3,8 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.impute import SimpleImputer
+import xgboost as xgb
+
 
 def metric(preds, actuals):
 	preds = preds.reshape(-1)
@@ -42,11 +44,16 @@ def data_cleaning(df):
 	df = pd.get_dummies(df, columns=one_hot_encoding_features)
 	return df
 
+
 def feature_engineering(df):
     df["Year"] = df.Date.dt.year
     df["Month"] = df.Date.dt.month
     df["Day"] = df.Date.dt.day
     df["WeekOfYear"] = df.Date.dt.weekofyear
+    average_sales_by_store = df.groupby("Store")["Sales"].median()
+    df["AverageSalesByStore"] = df.Store.map(average_sales_by_store)
+    average_sales_by_day_of_week = df.groupby("DayOfWeek")["Sales"].median()
+    df["AverageSalesByDayOfWeek"] = df.DayOfWeek.map(average_sales_by_store)
     return df
 
 
@@ -67,34 +74,64 @@ train = train[train.Open != 0]
 print("Join train and store")
 train = pd.merge(train, store, on="Store")
 
-df_train, df_test = train_test_split(train, test_size=0.25, random_state=42, shuffle=True)
+X_train, X_holdout = train_test_split(train, test_size=0.30, random_state=42, shuffle=True)
 
 print("Clean up data")
-df_train = data_cleaning(df_train)
-df_test = data_cleaning(df_test)
-#print(df_train.isnull().sum())
+X_train = data_cleaning(X_train)
+X_holdout = data_cleaning(X_holdout)
+#print(X_train.isnull().sum())
 
 print("Feature engineering")
-df_train = feature_engineering(df_train)
-df_test = feature_engineering(df_test)
-#print(df_train.info())
-#print(df_test.info())
+X_train = feature_engineering(X_train)
+X_holdout = feature_engineering(X_holdout)
+print(X_train.info())
+#print(X_holdout.info())
 
 print("Train Random Forrest")
-features = ["Store", "Customers", "CompetitionDistance", "StoreType_d", "DayOfWeek", "Promo", "Open",
-"Assortment_b", "Promo2SinceWeek", "StoreType_b", "WeekOfYear", "Promo2SinceYear", "Month", "Assortment_a"]
+features = ["Store", "DayOfWeek", "Customers", "Open", "Promo",
+       "CompetitionDistance", "CompetitionOpenSinceMonth",
+       "CompetitionOpenSinceYear", "Promo2", "Promo2SinceWeek",
+       "Promo2SinceYear", "SchoolHoliday_-999.0", "SchoolHoliday_0.0",
+       "SchoolHoliday_1.0", "StateHoliday_0", "StateHoliday_a",
+       "StateHoliday_b", "StateHoliday_c", "StoreType_a", "StoreType_b",
+       "StoreType_c", "StoreType_d", "Assortment_a", "Assortment_b",
+       "Assortment_c", "PromoInterval_Feb,May,Aug,Nov",
+       "PromoInterval_Jan,Apr,Jul,Oct", "PromoInterval_Mar,Jun,Sept,Dec",
+       "Year", "Month", "Day", "WeekOfYear"]
 
-rf = RandomForestRegressor(n_jobs=4, verbose=True)
-rf.fit(df_train[features], df_train.Sales)
-df_test["Prediction"] = rf.predict(df_test[features])
+params = {
+	"objective": "reg:squarederror",
+	"max_depth": 10,
+	"booster" : "gbtree",
+	"eta": 0.1,
+	"subsample": 0.85,
+	"colsample_bytree": 0.4,
+	"min_child_weight": 6,
+    "nthread": 4
+}
+num_boost_round = 1200
 
-## Feature Importance:
-importances_rf = pd.Series(rf.feature_importances_, index = df_train[features].columns)
-sorted_importances_rf = importances_rf.sort_values(ascending=False).nlargest(10)
-print(sorted_importances_rf)
+dtrain = xgb.DMatrix(X_train[features], X_train.Sales)
+dvalid = xgb.DMatrix(X_holdout[features], X_holdout.Sales)
+watchlist = [(dtrain, 'train'), (dvalid, 'eval')]
+gbm = xgb.train(params, dtrain, num_boost_round, evals=watchlist, early_stopping_rounds=200, verbose_eval=True)
+
+print("Validating")
+yhat = gbm.predict(xgb.DMatrix(X_holdout[features]))
+X_holdout["Prediction"] = yhat
+
+print(gbm.get_score(importance_type='gain'))
 
 # Measure the error
-predictions = df_test["Prediction"].values
-actuals = df_test["Sales"].values
+predictions = X_holdout["Prediction"].values
+actuals = X_holdout["Sales"].values
 rmspe = metric(predictions, actuals)
 print('RMSPE: {:.3f}'.format(rmspe))
+
+#rf = RandomForestRegressor(n_jobs=6, verbose=True)
+#rf.fit(X_train[features], X_train.Sales)
+#X_holdout["Prediction"] = rf.predict(X_holdout[features])
+## Feature Importance:
+#importances_rf = pd.Series(rf.feature_importances_, index = X_train[features].columns)
+#sorted_importances_rf = importances_rf.nlargest(25)
+#print(sorted_importances_rf)
