@@ -24,6 +24,7 @@ print(str(test.shape[0]) + " rows have been found.")
 
 print("Filter rows where Sales is bigger than zero")
 train = train[train.Sales > 0]
+test = test[test.Sales > 0]
 
 print("Filter rows where Open is true")
 train = train[train.Open != 0]
@@ -50,5 +51,5 @@ rf = RandomForestRegressor()
 # Measure the error
 predictions = test["Prediction"].values
 actuals = test["Sales"].values
-#rmspe = metric(predictions, actuals)
-#print('Validation RMSPE for Baseline I model: {:.3f}'.format(rmspe))
+rmspe = metric(predictions, actuals)
+print('Validation RMSPE for Baseline I model: {:.3f}'.format(rmspe))
