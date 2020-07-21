@@ -34,14 +34,14 @@ train = pd.merge(train, store, on="Store")
 test = pd.merge(test, store, on="Store")
 
 print("Clean up data")
+#train.dropna(inplace=True)
 #clean_up_data()
 
 print("Train Random Forrest")
 features = ["Store", "Open"]
 
-#train.dropna(inplace=True)
-naive_prediction = np.mean(train["Sales"])
-test["Prediction"] = naive_prediction
+naive_sales_per_store = train.groupby("Store")["Sales"].mean()
+test["Prediction"] = test.Store.map(naive_sales_per_store)
 
 # Train a Random Forest model
 rf = RandomForestRegressor()
