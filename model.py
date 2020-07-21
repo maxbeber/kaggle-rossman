@@ -10,6 +10,28 @@ def metric(preds, actuals):
 	return 100 * np.linalg.norm((actuals - preds) / actuals) / np.sqrt(preds.shape[0])
 
 
+def data_cleaning(df):
+	df.loc[df.Open.isnull(), "Open"] = 1
+	df["DayOfWeek"] = df.Date.dt.dayofweek + 1
+	categories = ["StateHoliday", "StoreType", "Assortment"]
+	df[categories] = df[categories].fillna(value="Missing")
+	numerical_features = ["Store", "Sales", "Customers", "Open", "Promo", "SchoolHoliday", "CompetitionDistance", "CompetitionOpenSinceMonth", "CompetitionOpenSinceYear", "Promo2", "Promo2SinceWeek", "Promo2SinceYear", "PromoInterval"]
+	df[numerical_features] = df[numerical_features].fillna(value=-999)
+	df["StateHoliday"] = df["StateHoliday"].replace({"0.0": "0"})
+	integer_features = ["Promo", "Open", "Store", "Customers", "SchoolHoliday", "CompetitionDistance", "CompetitionOpenSinceMonth", "CompetitionOpenSinceYear", "Promo2", "Promo2SinceWeek", "Promo2SinceYear"]
+	df[integer_features]= df[integer_features].astype("int", copy=False)
+	one_hot_encoding_features = ["StateHoliday", "StoreType", "Assortment", "PromoInterval"]
+	df = pd.get_dummies(df, columns=one_hot_encoding_features)
+	return df
+
+
+def feature_engineering(df):
+    df["Year"] = df.Date.dt.year
+    df["Month"] = df.Date.dt.month
+    df["WeekOfYear"] = df.Date.dt.weekofyear
+    return df
+
+
 print("Loading training data.")
 train = pd.read_csv("data/train.csv", header=0, parse_dates=["Date"], dtype={"StateHoliday":object})
 print(str(train.shape[0]) + " rows have been found.")
@@ -34,6 +56,11 @@ train = pd.merge(train, store, on="Store")
 test = pd.merge(test, store, on="Store")
 
 print("Clean up data")
+train = data_cleaning(train)
+#print(train.isnull().sum())
+train = feature_engineering(train)
+#print(train.info())
+
 #train.dropna(inplace=True)
 #clean_up_data()
 
@@ -52,4 +79,4 @@ rf = RandomForestRegressor()
 predictions = test["Prediction"].values
 actuals = test["Sales"].values
 rmspe = metric(predictions, actuals)
-print('Validation RMSPE for Baseline I model: {:.3f}'.format(rmspe))
+print('RMSPE: {:.3f}'.format(rmspe))
