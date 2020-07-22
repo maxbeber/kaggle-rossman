@@ -37,6 +37,7 @@ def rmspe(preds, actuals):
 
 
 def data_cleaning(df):
+    df = df.copy()
     missing_value_numeric_features = ["Promo", "CompetitionDistance", "CompetitionOpenSinceMonth", \
     "CompetitionOpenSinceYear", "Promo2SinceYear", "Promo2SinceWeek", "SchoolHoliday"]
     integer_features = ["Open", "DayOfWeek", "Promo", "Store", "Customers", "CompetitionOpenSinceYear", \
@@ -151,11 +152,11 @@ def display_metrics(x_train, y_train, x_holdout, y_holdout):
     train_pred = x_train["Prediction"].values
     train_actuals = y_train.values
     rmspe_train = rmspe(train_pred, train_actuals)
-    print('RMSPE on TRAIN SET: {:.3f}'.format(rmspe_train))
+    print("RMSPE on TRAIN SET: {:.3f}%".format(rmspe_train))
     predictions = x_holdout["Prediction"].values
     actuals = y_holdout.values
     rmspe_test = rmspe(predictions, actuals)
-    print('RMSPE on TEST SET: {:.3f}'.format(rmspe_test))
+    print("RMSPE on TEST SET: {:.3f}%".format(rmspe_test))
     print("#################################################")
     print("")
 

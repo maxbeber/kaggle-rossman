@@ -1,23 +1,11 @@
 import numpy as np
-import pickle
 import pandas as pd
+import pickle
 import sys
 import xgboost as xgb
 from joblib import load
 from sklearn.impute import SimpleImputer
 
-
-features = [ \
-    "Store", "DayOfWeek", "Customers", "Open", "Promo", \
-    "CompetitionDistance","Comp_since_days", \
-    "Promo2", 'Promo_since_days', \
-    "StateHoliday_0", "StateHoliday_a", \
-    "StateHoliday_b", "StateHoliday_c", "StoreType_a", "StoreType_b", \
-    "StoreType_c", "StoreType_d", "Assortment_a", "Assortment_b", \
-    "Assortment_c", "PromoInterval_Feb,May,Aug,Nov", \
-    "PromoInterval_Jan,Apr,Jul,Oct", "PromoInterval_Mar,Jun,Sept,Dec", \
-    "Year", "Month", "WeekOfYear","MedianSalesByStore", "MedianSalesByDayOfWeek", \
-    "Monetary" , "Recency", "Customer_avg"]
 
 def rmspe(preds, actuals):
     preds = preds.reshape(-1)
@@ -100,6 +88,7 @@ test = feature_engineering(test)
 print("Loaded the model")
 bst = load("rossman.dat")
 Y_test = test.Sales.values
+features = bst.feature_names
 X_test = test[features]
 
 print("Run predictions")
