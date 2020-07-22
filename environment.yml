@@ -5,9 +5,9 @@ channels:
 dependencies:
   - joblib
   - numpy
-  - python
   - pandas
   - pickle5
+  - python
   - scipy
   - scikit-learn
   - xgboost
