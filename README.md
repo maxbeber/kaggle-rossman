@@ -1,1 +1,3 @@
-# kaggle-rossman
+# Kaggle Rossman Challenge
+
+Tbd.
