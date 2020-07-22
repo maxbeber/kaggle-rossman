@@ -63,7 +63,7 @@ def time_distance(df,sinceWorM,sinceYr,distance_name,week=None):
 	glob_999 = m_999 + y_999
 	df_mask = df.loc[glob_999,:]
 	if week == 1:
-		df_mask.loc[:,sinceWorM]=df_mask.loc[:,sinceWorM]//4
+		df_mask.loc[:,sinceWorM]=df_mask.loc[:,sinceWorM] // 4
 		df_mask.loc[:,sinceWorM] = df_mask.loc[:,sinceWorM].apply(str).replace({"0":"1","13":"12"})
 	df_mask.loc[:,"temp_MY"] = pd.to_datetime(df_mask.loc[:,sinceYr].apply(str) + "-" + df_mask.loc[:,sinceWorM].apply(str) + "-01")
 	df_mask.loc[:,distance_name] = (df_mask.loc[:,"Date"] - df_mask.loc[:,"temp_MY"]).dt.days
@@ -192,6 +192,6 @@ display_features_by_importance(feature_score)
 # save model to file
 print("Save the model to rossman.dat")
 gbm.save_model("rossman.bin")
-#pickle.dump(gbm, open("rossman.dat", "wb"))
+pickle.dump(gbm, open("rossman.dat", "wb"))
 
 display_metrics(X_train, Y_train, X_holdout, Y_holdout)
