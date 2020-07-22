@@ -13,7 +13,7 @@ from sklearn.impute import SimpleImputer
 features = [ \
     "Store", "DayOfWeek", "Customers", "Open", "Promo", \
     "CompetitionDistance","Comp_since_days", \
-    "Promo2", 'Promo_since_days', \
+    "Promo2", "Promo_since_days", \
     "StateHoliday_0", "StateHoliday_a", \
     "StateHoliday_b", "StateHoliday_c", "StoreType_a", "StoreType_b", \
     "StoreType_c", "StoreType_d", "Assortment_a", "Assortment_b", \
@@ -26,17 +26,16 @@ params = {
     "max_depth": 5,
     "nthread": 6
 }
-num_boost_round = 130
-test_features_eng = {}
-
+num_boost_round = 1300
 
 def feature_engineering(df):
+    test_features_eng = {}
     df["Year"] = df.Date.dt.year
     df["Month"] = df.Date.dt.month
     df["Day"] = df.Date.dt.day
     df["WeekOfYear"] = df.Date.dt.weekofyear
-    df = time_distance(df, 'CompetitionOpenSinceMonth', 'CompetitionOpenSinceYear', 'Comp_since_days')
-    df = time_distance(df, 'Promo2SinceWeek', 'Promo2SinceYear','Promo_since_days', 1)
+    df = time_distance(df, "CompetitionOpenSinceMonth", "CompetitionOpenSinceYear", "Comp_since_days")
+    df = time_distance(df, "Promo2SinceWeek", "Promo2SinceYear","Promo_since_days", 1)
     median_sales_by_store = df.groupby("Store")["Sales"].median()
     # Convert to dictionnaire to use in TEST SET and Save it in global Dictionnary
     test_features_eng["MedianSalesByStore"] = median_sales_by_store.to_dict()
@@ -47,8 +46,8 @@ def feature_engineering(df):
     df["MedianSalesByDayOfWeek"] = df.DayOfWeek.map(median_sales_by_store)
     ## RFM
     today = datetime.datetime(2014,8,1)
-    agg_rule = {'Date': lambda x: (today - x.max()).days, 'Customers': lambda x: x.median(), 'Sales': lambda x: x.sum()}
-    rfm_score = df.groupby('Store').agg(agg_rule)
+    agg_rule = {"Date": lambda x: (today - x.max()).days, "Customers": lambda x: x.median(), "Sales": lambda x: x.sum()}
+    rfm_score = df.groupby("Store").agg(agg_rule)
     rfm_score.columns = ["R", "C", "M"]
     quantiles = rfm_score.quantile(q=[0.25, 0.5, 0.75])
     ## Recency Feature
@@ -56,7 +55,7 @@ def feature_engineering(df):
     df["Recency"] = df.Store.map(test_features_eng["Recency"])
     # Convert to dictionnaire to use in TEST SET and Save it in global Dictionnary
     ## Monetary Feature
-    rfm_score["M_segments"] = rfm_score['M'].apply(m_group, args=('M',quantiles))
+    rfm_score["M_segments"] = rfm_score["M"].apply(m_group, args=("M",quantiles))
     # Convert to dictionnaire to use in TEST SET and Save it in global Dictionnary
     test_features_eng["Monetary"] = rfm_score["M_segments"].to_dict()
     df["Monetary"] = df.Store.map(test_features_eng["Monetary"])
