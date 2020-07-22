@@ -1,18 +1,20 @@
 # Kaggle Rossman Challenge
 
-## Create a virtual environment
+## Instructions
+
+### Create a virtual environment
 
 ```python
 conda env create -f environment.yml -n rossman
 ```
 
-# Extract training data
+### Extract training data
 
 ```python
 python data.py
 ```
 
-# Extract test data
+### Extract test data
 
 ```python
 python data.py --test 1
