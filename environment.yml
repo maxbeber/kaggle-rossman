@@ -1,0 +1,13 @@
+name: fundamentals
+channels:
+  - conda-forge
+  - anaconda
+dependencies:
+  - joblib
+  - numpy
+  - python
+  - pandas
+  - pickle5
+  - scipy
+  - scikit-learn
+  - xgboost
