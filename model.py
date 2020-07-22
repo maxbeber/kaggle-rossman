@@ -4,6 +4,7 @@ import sys
 import pandas as pd
 import pickle
 import xgboost as xgb
+from joblib import dump
 from sklearn.model_selection import train_test_split
 from sklearn.impute import SimpleImputer
 
@@ -191,7 +192,8 @@ display_features_by_importance(feature_score)
 
 # save model to file
 print("Save the model to rossman.dat")
-gbm.save_model("rossman.bin")
-pickle.dump(gbm, open("rossman.dat", "wb"))
+dump(gbm, "rossman.dat")
+#gbm.save_model("rossman.bin")
+#pickle.dump(gbm, open("rossman.dat", "wb"))
 
 display_metrics(X_train, Y_train, X_holdout, Y_holdout)

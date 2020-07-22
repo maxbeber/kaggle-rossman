@@ -3,6 +3,7 @@ import pickle
 import pandas as pd
 import sys
 import xgboost as xgb
+from joblib import load
 from sklearn.impute import SimpleImputer
 
 
@@ -88,8 +89,9 @@ Y_test = test.Sales
 X_test = test.drop(columns=["Sales"], axis=1)
 
 print("Loaded the model")
-bst = xgb.Booster({"nthread": 4})
-bst.load_model("rossman.bin")
+bst = load("rossman.dat")
+#bst = xgb.Booster({"nthread": 4})
+#bst.load_model("rossman.bin")
 
 print("Run predictions")
 yhat_test = bst.predict(xgb.DMatrix(X_test.values))
