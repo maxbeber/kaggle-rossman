@@ -23,7 +23,7 @@ params = {
 	"max_depth": 5,
 	"nthread": 4
 }
-num_boost_round = 130
+num_boost_round = 1300
 test_features_eng = {}
 
 
@@ -80,39 +80,32 @@ def feature_engineering(df, test_set=None):
 	df["WeekOfYear"] = df.Date.dt.weekofyear
 	df = time_distance(df, 'CompetitionOpenSinceMonth', 'CompetitionOpenSinceYear', 'Comp_since_days')
 	df = time_distance(df, 'Promo2SinceWeek', 'Promo2SinceYear','Promo_since_days', 1)
-	if test_set:
-		# Searching values back in dictionnary (computed on the TRAINING SET)
-		df["MedianSalesByStore"] = df.Store.map(test_features_eng["MedianSalesByStore"])
-		df["MedianSalesByDayOfWeek"] = df.DayOfWeek.map(test_features_eng["MedianSalesByDayOfWeek"])
-		df["Monetary"] = df.Store.map(test_features_eng["Monetary"])
-		df["Recency"] = df.Store.map(test_features_eng["Recency"])
-		df["Customer_avg"] = df.Store.map(test_features_eng["Customer_avg"])
-	else:
-		median_sales_by_store = df.groupby("Store")["Sales"].median()
-		# Convert to dictionnaire to use in TEST SET and Save it in global Dictionnary
-		test_features_eng["MedianSalesByStore"] = median_sales_by_store.to_dict()
-		df["MedianSalesByStore"] = df.Store.map(median_sales_by_store)
-		median_sales_by_day_of_week = df.groupby("DayOfWeek")["Sales"].median()
-		# Convert to dictionnaire to use in TEST SET and Save it in global Dictionnary
-		test_features_eng["MedianSalesByDayOfWeek"] = median_sales_by_day_of_week.to_dict()
-		df["MedianSalesByDayOfWeek"] = df.DayOfWeek.map(median_sales_by_store)
-		## RFM
-		today = datetime.datetime(2014,8,1)
-		agg_rule = {'Date': lambda x: (today - x.max()).days, 'Customers': lambda x: x.median(), 'Sales': lambda x: x.sum()}
-		rfm_score = df.groupby('Store').agg(agg_rule)
-		rfm_score.columns = ["R", "C", "M"]
-		quantiles = rfm_score.quantile(q=[0.25, 0.5, 0.75])
-		## Recency Feature
-		test_features_eng["Recency"] = rfm_score["R"].to_dict()
-		df["Recency"] = df.Store.map(test_features_eng["Recency"])
-		# Convert to dictionnaire to use in TEST SET and Save it in global Dictionnary
-		## Monetary Feature
-		rfm_score["M_segments"] = rfm_score['M'].apply(m_group, args=('M',quantiles))
-		# Convert to dictionnaire to use in TEST SET and Save it in global Dictionnary
-		test_features_eng["Monetary"] = rfm_score["M_segments"].to_dict()
-		df["Monetary"] = df.Store.map(test_features_eng["Monetary"])
-		test_features_eng["Customer_avg"] = rfm_score["C"].to_dict()
-		df["Customer_avg"] = df.Store.map(test_features_eng["Customer_avg"])
+	median_sales_by_store = df.groupby("Store")["Sales"].median()
+	# Convert to dictionnaire to use in TEST SET and Save it in global Dictionnary
+	test_features_eng["MedianSalesByStore"] = median_sales_by_store.to_dict()
+	df["MedianSalesByStore"] = df.Store.map(median_sales_by_store)
+	median_sales_by_day_of_week = df.groupby("DayOfWeek")["Sales"].median()
+	# Convert to dictionnaire to use in TEST SET and Save it in global Dictionnary
+	test_features_eng["MedianSalesByDayOfWeek"] = median_sales_by_day_of_week.to_dict()
+	df["MedianSalesByDayOfWeek"] = df.DayOfWeek.map(median_sales_by_store)
+	## RFM
+	today = datetime.datetime(2014,8,1)
+	agg_rule = {'Date': lambda x: (today - x.max()).days, 'Customers': lambda x: x.median(), 'Sales': lambda x: x.sum()}
+	rfm_score = df.groupby('Store').agg(agg_rule)
+	rfm_score.columns = ["R", "C", "M"]
+	quantiles = rfm_score.quantile(q=[0.25, 0.5, 0.75])
+	## Recency Feature
+	test_features_eng["Recency"] = rfm_score["R"].to_dict()
+	df["Recency"] = df.Store.map(test_features_eng["Recency"])
+	# Convert to dictionnaire to use in TEST SET and Save it in global Dictionnary
+	## Monetary Feature
+	rfm_score["M_segments"] = rfm_score['M'].apply(m_group, args=('M',quantiles))
+	# Convert to dictionnaire to use in TEST SET and Save it in global Dictionnary
+	test_features_eng["Monetary"] = rfm_score["M_segments"].to_dict()
+	df["Monetary"] = df.Store.map(test_features_eng["Monetary"])
+	test_features_eng["Customer_avg"] = rfm_score["C"].to_dict()
+	df["Customer_avg"] = df.Store.map(test_features_eng["Customer_avg"])
+	pickle.dump(test_features_eng, open("augmented_features.dat", "wb"))
 	return df
 
 
@@ -180,16 +173,16 @@ X = data.drop(columns=["Sales"], axis=1)
 X_train, X_holdout, Y_train, Y_holdout = train_test_split(X, Y, test_size=0.30, random_state=42, shuffle=True)
 
 print("Train Random Forrest")
-dtrain = xgb.DMatrix(X_train[features], Y_train)
-dvalid = xgb.DMatrix(X_holdout[features], Y_holdout)
+dtrain = xgb.DMatrix(X_train[features].values, Y_train.values)
+dvalid = xgb.DMatrix(X_holdout[features].values, Y_holdout.values)
 watchlist = [(dtrain, "train"), (dvalid, "eval")]
 gbm = xgb.XGBRegressor()
 gbm = xgb.train(params, dtrain, num_boost_round, evals=watchlist, early_stopping_rounds=25, verbose_eval=True)
 
 print("Computing predictions")
-yhat_holdout = gbm.predict(xgb.DMatrix(X_holdout[features]))
+yhat_holdout = gbm.predict(xgb.DMatrix(X_holdout[features].values))
 X_holdout["Prediction"] = yhat_holdout
-yhat_train = gbm.predict(xgb.DMatrix(X_train[features]))
+yhat_train = gbm.predict(xgb.DMatrix(X_train[features].values))
 X_train["Prediction"] = yhat_train
 
 print("Display the list of features by importance")
@@ -198,6 +191,7 @@ display_features_by_importance(feature_score)
 
 # save model to file
 print("Save the model to rossman.dat")
-pickle.dump(gbm, open("rossman.dat", "wb"))
-## Measure the error
+gbm.save_model("rossman.bin")
+#pickle.dump(gbm, open("rossman.dat", "wb"))
+
 display_metrics(X_train, Y_train, X_holdout, Y_holdout)
