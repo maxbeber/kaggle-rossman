@@ -5,6 +5,7 @@ import pandas as pd
 import pickle
 import xgboost as xgb
 from joblib import dump
+from metrics import rmspe
 from preprocessing import data_cleaning, time_distance, m_group
 from sklearn.model_selection import train_test_split
 from sklearn.impute import SimpleImputer
@@ -25,16 +26,8 @@ params = {
     "max_depth": 5,
     "nthread": 6
 }
-num_boost_round = 1300
+num_boost_round = 130
 test_features_eng = {}
-
-
-def rmspe(preds, actuals):
-    preds = preds.reshape(-1)
-    actuals = actuals.reshape(-1)
-    assert preds.shape == actuals.shape
-    error = 100 * np.linalg.norm((actuals - preds) / actuals) / np.sqrt(preds.shape[0])
-    return error
 
 
 def feature_engineering(df, test_set=None):

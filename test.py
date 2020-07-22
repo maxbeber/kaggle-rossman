@@ -4,14 +4,9 @@ import pickle
 import sys
 import xgboost as xgb
 from joblib import load
+from metrics import rmspe
 from preprocessing import data_cleaning, time_distance
 
-def rmspe(preds, actuals):
-    preds = preds.reshape(-1)
-    actuals = actuals.reshape(-1)
-    assert preds.shape == actuals.shape
-    error = 100 * np.linalg.norm((actuals - preds) / actuals) / np.sqrt(preds.shape[0])
-    return error
 
 def feature_engineering(df):
     df["Year"] = df.Date.dt.year
