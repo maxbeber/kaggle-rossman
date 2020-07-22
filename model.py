@@ -20,7 +20,7 @@ params = {
 	"max_depth": 5,
     "nthread": 4
 }
-num_boost_round = 250
+num_boost_round = 1300
 
 
 def rmspe(preds, actuals):
@@ -86,36 +86,32 @@ def display_features_by_importance(features):
 	print(features_dict)
 
 
-def display_metrics(train, holdout):
+def display_metrics(x_train, y_train, x_holdout, y_holdout):
 	print("")
 	print("#################################################")
-	train_pred = train["Prediction"].values
-	train_actuals = train["Sales"].values
+	train_pred = x_train["Prediction"].values
+	train_actuals = y_train.values
 	rmspe_train = rmspe(train_pred, train_actuals)
 	print('RMSPE on TRAIN SET: {:.3f}'.format(rmspe_train))
-	predictions = holdout["Prediction"].values
-	actuals = holdout["Sales"].values
+	predictions = x_holdout["Prediction"].values
+	actuals = y_holdout.values
 	rmspe_test = rmspe(predictions, actuals)
 	print('RMSPE on TEST SET: {:.3f}'.format(rmspe_test))
 	print("#################################################")
 	print("")
 
-
 print("Loading training data.")
-train = load_data()
-X_train, X_holdout = train_test_split(train, test_size=0.30, random_state=42, shuffle=True)
-Y_train = X_train.Sales
-Y_holdout = X_holdout.Sales
+data = load_data()
 
 print("Clean up data")
-X_train = data_cleaning(X_train)
-X_holdout = data_cleaning(X_holdout)
+data = data_cleaning(data)
 
 print("Feature engineering")
-X_train = feature_engineering(X_train)
-X_holdout = feature_engineering(X_holdout)
-#print(X_train.info())
-#print(X_holdout.info())
+data = feature_engineering(data)
+
+Y = data.Sales
+X = data.drop(columns=["Sales"], axis=1)
+X_train, X_holdout, Y_train, Y_holdout = train_test_split(X, Y, test_size=0.30, random_state=42, shuffle=True)
 
 print("Train Random Forrest")
 dtrain = xgb.DMatrix(X_train[features], Y_train)
@@ -138,4 +134,4 @@ print("Save the model to rossman.dat")
 dump(gbm, "rossman.dat")
 
 ## Measure the error
-display_metrics(X_train, X_holdout)
+display_metrics(X_train, Y_train, X_holdout, Y_holdout)
