@@ -69,7 +69,7 @@ def feature_engineering(df, test_set=None):
     df["Monetary"] = df.Store.map(test_features_eng["Monetary"])
     test_features_eng["Customer_avg"] = rfm_score["C"].to_dict()
     df["Customer_avg"] = df.Store.map(test_features_eng["Customer_avg"])
-    pickle.dump(test_features_eng, open("augmented_features.dat", "wb"))
+    pickle.dump(test_features_eng, open("training/augmented_features.dat", "wb"))
     return df
 
 
@@ -143,6 +143,6 @@ feature_score = gbm.get_score(importance_type="gain")
 display_features_by_importance(feature_score)
 
 print("Save the model to rossman.dat")
-dump(gbm, "rossman.dat")
+dump(gbm, "training/rossman.dat")
 
 display_metrics(X_train, Y_train, X_holdout, Y_holdout)

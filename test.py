@@ -20,7 +20,7 @@ def feature_engineering(df):
     df["WeekOfYear"] = df.Date.dt.weekofyear
     df = time_distance(df, 'CompetitionOpenSinceMonth', 'CompetitionOpenSinceYear', 'Comp_since_days')
     df = time_distance(df, 'Promo2SinceWeek', 'Promo2SinceYear','Promo_since_days', 1)
-    test_features_eng = pickle.load(open("augmented_features.dat", "rb"))
+    test_features_eng = pickle.load(open("training/augmented_features.dat", "rb"))
     #§print(test_features_eng.keys())
     df["MedianSalesByStore"] = df.Store.map(test_features_eng["MedianSalesByStore"])
     df["MedianSalesByDayOfWeek"] = df.DayOfWeek.map(test_features_eng["MedianSalesByDayOfWeek"])
@@ -48,7 +48,7 @@ test = data_cleaning(test)
 test = feature_engineering(test)
 
 print("Loaded the model")
-bst = load("rossman.dat")
+bst = load("training/rossman.dat")
 Y_test = test.Sales.values
 features = bst.feature_names
 X_test = test[features]
