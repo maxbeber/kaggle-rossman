@@ -1,10 +1,10 @@
-import sys
 import numpy as np
+import sys
 import pandas as pd
-from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.impute import SimpleImputer
 import xgboost as xgb
+from joblib import dump
+from sklearn.model_selection import train_test_split
+from sklearn.impute import SimpleImputer
 
 
 def metric(preds, actuals):
@@ -45,25 +45,15 @@ def feature_engineering(df):
     return df
 
 
-#flag_debug = bool(sys.argv[1])
-#print("flag_debug: ", flag_debug)
-
 print("Loading training data.")
 train = pd.read_csv("data/train.csv", header=0, parse_dates=["Date"], dtype={"StateHoliday":object})
 print(str(train.shape[0]) + " rows have been found.")
-
-if not flag_debug:
-	print("Loading training data.")
-	test = pd.read_csv("data/test.csv", header=0, parse_dates=["Date"], dtype={"StateHoliday":object})
-	print(str(test.shape[0]) + " rows have been found.")
 
 print("Loading store data.")
 store = pd.read_csv("data/store.csv", header=0)
 print(str(store.shape[0]) + " rows have been found.")
 
 print("Filter rows where Sales is bigger than zero")
-if not flag_debug:
-	test = test[test.Sales > 0]
 train = train[train.Sales > 0]
 
 print("Filter rows where Open is true")
@@ -77,14 +67,12 @@ X_train, X_holdout = train_test_split(train, test_size=0.30, random_state=42, sh
 print("Clean up data")
 X_train = data_cleaning(X_train)
 X_holdout = data_cleaning(X_holdout)
-#print(X_train.isnull().sum())
 
 print("Feature engineering")
 X_train = feature_engineering(X_train)
 X_holdout = feature_engineering(X_holdout)
 print(X_train.info())
 print(X_holdout.info())
-
 
 print("Train Random Forrest")
 features = ["Store", "DayOfWeek", "Customers", "Open", "Promo", \
@@ -101,7 +89,7 @@ params = {
 	"max_depth": 5,
     "nthread": 4
 }
-num_boost_round = 1000
+num_boost_round = 1300
 
 dtrain = xgb.DMatrix(X_train[features], X_train.Sales)
 dvalid = xgb.DMatrix(X_holdout[features], X_holdout.Sales)
@@ -109,29 +97,29 @@ watchlist = [(dtrain, 'train'), (dvalid, 'eval')]
 gbm = xgb.train(params, dtrain, num_boost_round, evals=watchlist, early_stopping_rounds=50, verbose_eval=True)
 
 print("Validating")
-yhat = gbm.predict(xgb.DMatrix(X_holdout[features]))
-X_holdout["Prediction"] = yhat
+yhat_holdout = gbm.predict(xgb.DMatrix(X_holdout[features]))
+X_holdout["Prediction"] = yhat_holdout
+yhat_train = gbm.predict(xgb.DMatrix(X_train[features]))
+X_train["Prediction"] = yhat_train
 
+print("Display the list of features by importance")
 feature_importance = gbm.get_score(importance_type='gain')
-#feature_importance_sorted = sorted(feature_importance.items(), key=lambda kv: kv[1])
-print(feature_importance)
+feature_importance_sorted = sorted(feature_importance.items(), key=lambda kv: kv[1])
+print(feature_importance_sorted)
 
-# Measure the error
+# save model to file
+print("Save the model to rossman.dat")
+dump(gbm, "rossman.dat")
+
+## Measure the error
+print("")
+print("#################################################")
+train_pred = X_train["Prediction"].values
+train_actuals = X_train["Sales"].values
+rmspe_train = metric(train_pred, train_actuals)
+print('RMSPE on TRAIN SET: {:.3f}'.format(rmspe_train))
 predictions = X_holdout["Prediction"].values
 actuals = X_holdout["Sales"].values
 rmspe = metric(predictions, actuals)
-print('RMSPE: {:.3f}'.format(rmspe))
-
-#rf = RandomForestRegressor(n_jobs=6, verbose=True)
-#rf.fit(X_train[features], X_train.Sales)
-#X_holdout["Prediction"] = rf.predict(X_holdout[features])
-## Feature Importance:
-#importances_rf = pd.Series(rf.feature_importances_, index = X_train[features].columns)
-#sorted_importances_rf = importances_rf.nlargest(25)
-#print(sorted_importances_rf)
-#	"booster" : "gbtree",
-#	"eta": 0.1,
-#	"subsample": 0.85,
-#	"colsample_bytree": 0.4,
-#	"min_child_weight": 6,
-#RMSPE: 8.790
+print('RMSPE on TEST SET: {:.3f}'.format(rmspe))
+print("#################################################")
