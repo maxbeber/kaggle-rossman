@@ -23,11 +23,12 @@ params = {
 num_boost_round = 250
 
 
-def metric(preds, actuals):
+def rmspe(preds, actuals):
 	preds = preds.reshape(-1)
 	actuals = actuals.reshape(-1)
 	assert preds.shape == actuals.shape
-	return 100 * np.linalg.norm((actuals - preds) / actuals) / np.sqrt(preds.shape[0])
+	error = 100 * np.linalg.norm((actuals - preds) / actuals) / np.sqrt(preds.shape[0])
+	return error
 
 
 def data_cleaning(df):
@@ -61,6 +62,21 @@ def feature_engineering(df):
     return df
 
 
+def load_data():
+	train = pd.read_csv("data/train.csv", header=0, parse_dates=["Date"], dtype={"StateHoliday":object})
+	print(str(train.shape[0]) + " rows have been found.")
+	print("Loading store data.")
+	store = pd.read_csv("data/store.csv", header=0)
+	print(str(store.shape[0]) + " rows have been found.")
+	print("Filter rows where Sales is bigger than zero")
+	train = train[train.Sales > 0]
+	print("Filter rows where Open is true")
+	train = train[train.Open != 0]
+	print("Join train and store")
+	train = pd.merge(train, store, on="Store")
+	return train
+
+
 def display_features_by_importance(features):
 	features_dict = {}
 	feature_importance_sorted = sorted(features.items(), key=lambda kv: kv[1], reverse=True)
@@ -75,34 +91,21 @@ def display_metrics(train, holdout):
 	print("#################################################")
 	train_pred = train["Prediction"].values
 	train_actuals = train["Sales"].values
-	rmspe_train = metric(train_pred, train_actuals)
+	rmspe_train = rmspe(train_pred, train_actuals)
 	print('RMSPE on TRAIN SET: {:.3f}'.format(rmspe_train))
 	predictions = holdout["Prediction"].values
 	actuals = holdout["Sales"].values
-	rmspe = metric(predictions, actuals)
-	print('RMSPE on TEST SET: {:.3f}'.format(rmspe))
+	rmspe_test = rmspe(predictions, actuals)
+	print('RMSPE on TEST SET: {:.3f}'.format(rmspe_test))
 	print("#################################################")
 	print("")
 
 
 print("Loading training data.")
-train = pd.read_csv("data/train.csv", header=0, parse_dates=["Date"], dtype={"StateHoliday":object})
-print(str(train.shape[0]) + " rows have been found.")
-
-print("Loading store data.")
-store = pd.read_csv("data/store.csv", header=0)
-print(str(store.shape[0]) + " rows have been found.")
-
-print("Filter rows where Sales is bigger than zero")
-train = train[train.Sales > 0]
-
-print("Filter rows where Open is true")
-train = train[train.Open != 0]
-
-print("Join train and store")
-train = pd.merge(train, store, on="Store")
-
+train = load_data()
 X_train, X_holdout = train_test_split(train, test_size=0.30, random_state=42, shuffle=True)
+Y_train = X_train.Sales
+Y_holdout = X_holdout.Sales
 
 print("Clean up data")
 X_train = data_cleaning(X_train)
@@ -115,9 +118,9 @@ X_holdout = feature_engineering(X_holdout)
 #print(X_holdout.info())
 
 print("Train Random Forrest")
-dtrain = xgb.DMatrix(X_train[features], X_train.Sales)
-dvalid = xgb.DMatrix(X_holdout[features], X_holdout.Sales)
-watchlist = [(dtrain, 'train'), (dvalid, 'eval')]
+dtrain = xgb.DMatrix(X_train[features], Y_train)
+dvalid = xgb.DMatrix(X_holdout[features], Y_holdout)
+watchlist = [(dtrain, "train"), (dvalid, "eval")]
 gbm = xgb.train(params, dtrain, num_boost_round, evals=watchlist, early_stopping_rounds=50, verbose_eval=True)
 
 print("Computing predictions")
@@ -127,7 +130,7 @@ yhat_train = gbm.predict(xgb.DMatrix(X_train[features]))
 X_train["Prediction"] = yhat_train
 
 print("Display the list of features by importance")
-feature_score = gbm.get_score(importance_type='gain')
+feature_score = gbm.get_score(importance_type="gain")
 display_features_by_importance(feature_score)
 
 # save model to file
