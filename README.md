@@ -8,6 +8,12 @@
 conda env create -f environment.yml -n rossman
 ```
 
+### Activate the virtual environment
+
+```python
+conda activate rossman
+```
+
 ### Extract training data
 
 ```python
