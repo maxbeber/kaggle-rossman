@@ -6,6 +6,22 @@ from joblib import dump
 from sklearn.model_selection import train_test_split
 from sklearn.impute import SimpleImputer
 
+features = ["Store", "DayOfWeek", "Customers", "Open", "Promo", \
+	"CompetitionDistance", "CompetitionOpenSinceMonth", \
+	"CompetitionOpenSinceYear", "Promo2", "Promo2SinceWeek", \
+	"Promo2SinceYear", "StateHoliday_0", "StateHoliday_a", \
+	"StateHoliday_b", "StateHoliday_c", "StoreType_a", "StoreType_b", \
+	"StoreType_c", "StoreType_d", "Assortment_a", "Assortment_b", \
+	"Assortment_c", "PromoInterval_Feb,May,Aug,Nov", \
+	"PromoInterval_Jan,Apr,Jul,Oct", "PromoInterval_Mar,Jun,Sept,Dec", \
+	"Year", "Month", "Day", "WeekOfYear"]
+params = {
+	"objective": "reg:squarederror",
+	"max_depth": 5,
+    "nthread": 4
+}
+num_boost_round = 250
+
 
 def metric(preds, actuals):
 	preds = preds.reshape(-1)
@@ -45,6 +61,30 @@ def feature_engineering(df):
     return df
 
 
+def display_features_by_importance(features):
+	features_dict = {}
+	feature_importance_sorted = sorted(features.items(), key=lambda kv: kv[1], reverse=True)
+	for i in range(len(feature_importance_sorted)):
+		feature, importance_rate = feature_importance_sorted[i]
+		features_dict[feature] = importance_rate
+	print(features_dict)
+
+
+def display_metrics(train, holdout):
+	print("")
+	print("#################################################")
+	train_pred = train["Prediction"].values
+	train_actuals = train["Sales"].values
+	rmspe_train = metric(train_pred, train_actuals)
+	print('RMSPE on TRAIN SET: {:.3f}'.format(rmspe_train))
+	predictions = holdout["Prediction"].values
+	actuals = holdout["Sales"].values
+	rmspe = metric(predictions, actuals)
+	print('RMSPE on TEST SET: {:.3f}'.format(rmspe))
+	print("#################################################")
+	print("")
+
+
 print("Loading training data.")
 train = pd.read_csv("data/train.csv", header=0, parse_dates=["Date"], dtype={"StateHoliday":object})
 print(str(train.shape[0]) + " rows have been found.")
@@ -71,55 +111,28 @@ X_holdout = data_cleaning(X_holdout)
 print("Feature engineering")
 X_train = feature_engineering(X_train)
 X_holdout = feature_engineering(X_holdout)
-print(X_train.info())
-print(X_holdout.info())
+#print(X_train.info())
+#print(X_holdout.info())
 
 print("Train Random Forrest")
-features = ["Store", "DayOfWeek", "Customers", "Open", "Promo", \
-	"CompetitionDistance", "CompetitionOpenSinceMonth", \
-	"CompetitionOpenSinceYear", "Promo2", "Promo2SinceWeek", \
-	"Promo2SinceYear", "StateHoliday_0", "StateHoliday_a", \
-	"StateHoliday_b", "StateHoliday_c", "StoreType_a", "StoreType_b", \
-	"StoreType_c", "StoreType_d", "Assortment_a", "Assortment_b", \
-	"Assortment_c", "PromoInterval_Feb,May,Aug,Nov", \
-	"PromoInterval_Jan,Apr,Jul,Oct", "PromoInterval_Mar,Jun,Sept,Dec", \
-	"Year", "Month", "Day", "WeekOfYear"]
-params = {
-	"objective": "reg:squarederror",
-	"max_depth": 5,
-    "nthread": 4
-}
-num_boost_round = 1300
-
 dtrain = xgb.DMatrix(X_train[features], X_train.Sales)
 dvalid = xgb.DMatrix(X_holdout[features], X_holdout.Sales)
 watchlist = [(dtrain, 'train'), (dvalid, 'eval')]
 gbm = xgb.train(params, dtrain, num_boost_round, evals=watchlist, early_stopping_rounds=50, verbose_eval=True)
 
-print("Validating")
+print("Computing predictions")
 yhat_holdout = gbm.predict(xgb.DMatrix(X_holdout[features]))
 X_holdout["Prediction"] = yhat_holdout
 yhat_train = gbm.predict(xgb.DMatrix(X_train[features]))
 X_train["Prediction"] = yhat_train
 
 print("Display the list of features by importance")
-feature_importance = gbm.get_score(importance_type='gain')
-feature_importance_sorted = sorted(feature_importance.items(), key=lambda kv: kv[1])
-print(feature_importance_sorted)
+feature_score = gbm.get_score(importance_type='gain')
+display_features_by_importance(feature_score)
 
 # save model to file
 print("Save the model to rossman.dat")
 dump(gbm, "rossman.dat")
 
 ## Measure the error
-print("")
-print("#################################################")
-train_pred = X_train["Prediction"].values
-train_actuals = X_train["Sales"].values
-rmspe_train = metric(train_pred, train_actuals)
-print('RMSPE on TRAIN SET: {:.3f}'.format(rmspe_train))
-predictions = X_holdout["Prediction"].values
-actuals = X_holdout["Sales"].values
-rmspe = metric(predictions, actuals)
-print('RMSPE on TEST SET: {:.3f}'.format(rmspe))
-print("#################################################")
+display_metrics(X_train, X_holdout)
