@@ -44,8 +44,8 @@ test = feature_engineering(test)
 
 print("Loaded the model")
 bst = load("training/rossman.dat")
-Y_test = test.Sales.values
 features = bst.feature_names
+Y_test = test.Sales.values
 X_test = test[features]
 
 print("Run predictions")
