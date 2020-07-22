@@ -7,6 +7,18 @@ from joblib import load
 from sklearn.impute import SimpleImputer
 
 
+features = [ \
+    "Store", "DayOfWeek", "Customers", "Open", "Promo", \
+    "CompetitionDistance","Comp_since_days", \
+    "Promo2", 'Promo_since_days', \
+    "StateHoliday_0", "StateHoliday_a", \
+    "StateHoliday_b", "StateHoliday_c", "StoreType_a", "StoreType_b", \
+    "StoreType_c", "StoreType_d", "Assortment_a", "Assortment_b", \
+    "Assortment_c", "PromoInterval_Feb,May,Aug,Nov", \
+    "PromoInterval_Jan,Apr,Jul,Oct", "PromoInterval_Mar,Jun,Sept,Dec", \
+    "Year", "Month", "WeekOfYear","MedianSalesByStore", "MedianSalesByDayOfWeek", \
+    "Monetary" , "Recency", "Customer_avg"]
+
 def rmspe(preds, actuals):
     preds = preds.reshape(-1)
     actuals = actuals.reshape(-1)
@@ -85,18 +97,13 @@ test = pd.merge(test, store, on="Store")
 test = data_cleaning(test)
 test = feature_engineering(test)
 
-Y_test = test.Sales
-X_test = test.drop(columns=["Sales"], axis=1)
-
 print("Loaded the model")
 bst = load("rossman.dat")
-#bst = xgb.Booster({"nthread": 4})
-#bst.load_model("rossman.bin")
+Y_test = test.Sales.values
+X_test = test[features]
 
 print("Run predictions")
-yhat_test = bst.predict(xgb.DMatrix(X_test.values))
+yhat_test = bst.predict(xgb.DMatrix(X_test))
 
-test_pred = yhat_test.values
-test_actuals = Y_test.values
-rmspe_test = rmspe(test_pred, test_actuals)
-print("RMSPE on TEST SET: {:.3f}".format(rmspe_test))
+rmspe_test = rmspe(yhat_test, Y_test)
+print("RMSPE on test set: {:.3f}%".format(rmspe_test))

@@ -22,9 +22,9 @@ features = [ \
 params = {
     "objective": "reg:squarederror",
     "max_depth": 5,
-    "nthread": 4
+    "nthread": 6
 }
-num_boost_round = 130
+num_boost_round = 1300
 test_features_eng = {}
 
 
@@ -170,30 +170,27 @@ print("Feature engineering")
 data = feature_engineering(data)
 
 Y = data.Sales
-X = data.drop(columns=["Sales"], axis=1)
+X = data.drop(columns=["Date", "Sales"], axis=1)
 X_train, X_holdout, Y_train, Y_holdout = train_test_split(X, Y, test_size=0.30, random_state=42, shuffle=True)
 
 print("Train Random Forrest")
-dtrain = xgb.DMatrix(X_train[features].values, Y_train.values)
-dvalid = xgb.DMatrix(X_holdout[features].values, Y_holdout.values)
+dtrain = xgb.DMatrix(X_train[features].values, label=Y_train.values, feature_names=features)
+dvalid = xgb.DMatrix(X_holdout[features].values, label=Y_holdout.values, feature_names=features)
 watchlist = [(dtrain, "train"), (dvalid, "eval")]
 gbm = xgb.XGBRegressor()
 gbm = xgb.train(params, dtrain, num_boost_round, evals=watchlist, early_stopping_rounds=25, verbose_eval=True)
 
 print("Computing predictions")
-yhat_holdout = gbm.predict(xgb.DMatrix(X_holdout[features].values))
+yhat_holdout = gbm.predict(xgb.DMatrix(X_holdout[features]))
 X_holdout["Prediction"] = yhat_holdout
-yhat_train = gbm.predict(xgb.DMatrix(X_train[features].values))
+yhat_train = gbm.predict(xgb.DMatrix(X_train[features]))
 X_train["Prediction"] = yhat_train
 
 print("Display the list of features by importance")
 feature_score = gbm.get_score(importance_type="gain")
 display_features_by_importance(feature_score)
 
-# save model to file
 print("Save the model to rossman.dat")
 dump(gbm, "rossman.dat")
-#gbm.save_model("rossman.bin")
-#pickle.dump(gbm, open("rossman.dat", "wb"))
 
 display_metrics(X_train, Y_train, X_holdout, Y_holdout)
