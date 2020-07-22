@@ -30,7 +30,7 @@ num_boost_round = 130
 test_features_eng = {}
 
 
-def feature_engineering(df, test_set=None):
+def feature_engineering(df):
     df["Year"] = df.Date.dt.year
     df["Month"] = df.Date.dt.month
     df["Day"] = df.Date.dt.day
