@@ -45,8 +45,8 @@ def feature_engineering(df):
     return df
 
 
-flag_debug = bool(sys.argv[1])
-print("flag_debug: ", flag_debug)
+#flag_debug = bool(sys.argv[1])
+#print("flag_debug: ", flag_debug)
 
 print("Loading training data.")
 train = pd.read_csv("data/train.csv", header=0, parse_dates=["Date"], dtype={"StateHoliday":object})
