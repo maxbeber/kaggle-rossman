@@ -23,7 +23,7 @@ params = {
 	"max_depth": 5,
 	"nthread": 4
 }
-num_boost_round = 1300
+num_boost_round = 130
 test_features_eng = {}
 
 
