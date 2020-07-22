@@ -5,7 +5,7 @@ import pandas as pd
 import pickle
 import xgboost as xgb
 from joblib import dump
-from preprocessing import data_cleaning 
+from preprocessing import data_cleaning, time_distance, m_group
 from sklearn.model_selection import train_test_split
 from sklearn.impute import SimpleImputer
 
@@ -35,25 +35,6 @@ def rmspe(preds, actuals):
     assert preds.shape == actuals.shape
     error = 100 * np.linalg.norm((actuals - preds) / actuals) / np.sqrt(preds.shape[0])
     return error
-
-
-def time_distance(df,sinceWorM,sinceYr,distance_name,week=None):
-    # sinceWorM : string of column name with ...sinceMonth, if sinceWeek => week=1
-    # sinceYr : string of column name with ... SinceYear
-    # distance_name : ex. competition_dist or promo_dist
-    m_999 = df[sinceWorM] != -999
-    y_999 = df[sinceYr] != -999
-    glob_999 = m_999 + y_999
-    df_mask = df.loc[glob_999,:]
-    if week == 1:
-        df_mask.loc[:,sinceWorM]=df_mask.loc[:,sinceWorM] // 4
-        df_mask.loc[:,sinceWorM] = df_mask.loc[:,sinceWorM].apply(str).replace({"0":"1","13":"12"})
-    df_mask.loc[:,"temp_MY"] = pd.to_datetime(df_mask.loc[:,sinceYr].apply(str) + "-" + df_mask.loc[:,sinceWorM].apply(str) + "-01")
-    df_mask.loc[:,distance_name] = (df_mask.loc[:,"Date"] - df_mask.loc[:,"temp_MY"]).dt.days
-    # concat back columns with distance in days to original df
-    new_df = pd.concat([df,df_mask.loc[:,distance_name]],axis=1, sort=False)
-    new_df.loc[:,distance_name] = new_df.loc[:,distance_name].fillna(value=-9999).astype("int",copy=False)
-    return new_df
 
 
 def feature_engineering(df, test_set=None):
@@ -105,17 +86,6 @@ def load_data():
     print("Join train and store")
     train = pd.merge(train, store, on="Store")
     return train
-
-
-def m_group(x, type, quantiles):
-    if x <= quantiles[type].iloc[0]:
-        return 4
-    elif x <= quantiles[type].iloc[1]:
-        return 3
-    elif x <= quantiles[type].iloc[2]:
-        return 2
-    else:
-        return 1
 
 
 def display_features_by_importance(features):
