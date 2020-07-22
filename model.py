@@ -5,6 +5,7 @@ import pandas as pd
 import pickle
 import xgboost as xgb
 from joblib import dump
+from preprocessing import data_cleaning 
 from sklearn.model_selection import train_test_split
 from sklearn.impute import SimpleImputer
 
@@ -34,26 +35,6 @@ def rmspe(preds, actuals):
     assert preds.shape == actuals.shape
     error = 100 * np.linalg.norm((actuals - preds) / actuals) / np.sqrt(preds.shape[0])
     return error
-
-
-def data_cleaning(df):
-    df = df.copy()
-    missing_value_numeric_features = ["Promo", "CompetitionDistance", "CompetitionOpenSinceMonth", \
-    "CompetitionOpenSinceYear", "Promo2SinceYear", "Promo2SinceWeek", "SchoolHoliday"]
-    integer_features = ["Open", "DayOfWeek", "Promo", "Store", "Customers", "CompetitionOpenSinceYear", \
-    "CompetitionOpenSinceMonth", "Promo2SinceYear", "Promo2SinceWeek", "CompetitionDistance"]
-    df.loc[:, missing_value_numeric_features] = df.loc[:, missing_value_numeric_features].fillna(value=-999)
-    df.loc[:, "Open"].fillna(value="1", inplace=True)
-    mean_imputer = SimpleImputer(strategy="median")
-    df[["Customers"]] = mean_imputer.fit_transform(df[["Customers"]])
-    df.loc[:, "DayOfWeek"] = df.Date.dt.dayofweek + 1
-    categories = ["StateHoliday", "StoreType", "Assortment"]
-    df.loc[:, categories].fillna(value="Missing", inplace=True)
-    df.loc[:, "StateHoliday"] = df.StateHoliday.replace({"0.0": "0"})
-    df[integer_features] = df[integer_features].astype("int64", copy=False)
-    one_hot_encoding_features = ["SchoolHoliday", "StateHoliday", "StoreType", "Assortment", "PromoInterval"]
-    df = pd.get_dummies(df, columns=one_hot_encoding_features)
-    return df
 
 
 def time_distance(df,sinceWorM,sinceYr,distance_name,week=None):
